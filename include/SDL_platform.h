@@ -56,6 +56,10 @@
 #undef __IRIX__
 #define __IRIX__    1
 #endif
+#if (defined(MOLLENOS) || defined(VALI))
+#undef __VALI__
+#define __VALI__    1
+#endif
 #if (defined(linux) || defined(__linux) || defined(__linux__))
 #undef __LINUX__
 #define __LINUX__   1

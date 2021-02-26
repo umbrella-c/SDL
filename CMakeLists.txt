@@ -138,6 +138,8 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "BeOS.*")
   message_error("BeOS support has been removed as of SDL 2.0.2.")
 elseif(CMAKE_SYSTEM_NAME MATCHES "Haiku.*")
   set(HAIKU TRUE)
+elseif(CMAKE_SYSTEM_NAME MATCHES "vali.*")
+  set(VALI TRUE)
 endif()
 
 # Don't mistake osx for unix
@@ -165,7 +167,7 @@ if(APPLE OR ARCH_64)
     set(OPT_DEF_SSEMATH ON)
   endif()
 endif()
-if(UNIX OR MINGW OR MSYS)
+if(UNIX OR MINGW OR MSYS OR VALI)
   set(OPT_DEF_LIBC ON)
 endif()
 
@@ -173,7 +175,7 @@ endif()
 #  so we'll just use libusb when it's available. libusb does not support iOS,
 #  so we default to yes on iOS.
 #  TODO: Windows can support libusb, the hid.c file just depends on Unix APIs
-if((WINDOWS AND NOT WINDOWS_STORE) OR IOS OR TVOS OR ANDROID)
+if((WINDOWS AND NOT WINDOWS_STORE) OR IOS OR TVOS OR ANDROID OR VALI)
   set(HIDAPI_SKIP_LIBUSB TRUE)
 else()
   set(HIDAPI_SKIP_LIBUSB FALSE)
@@ -250,7 +252,7 @@ set(SDL_CFLAGS "")
 
 # When building shared lib for Windows with MinGW,
 # avoid the DLL having a "lib" prefix
-if(WINDOWS)
+if(WINDOWS OR VALI)
   set(CMAKE_SHARED_LIBRARY_PREFIX "")
 endif()
 
@@ -2003,6 +2005,34 @@ elseif(RISCOS)
   if(SDL_AUDIO)
     CheckOSS()
   endif()
+elseif(VALI)
+  if(SDL_FILESYSTEM)
+    set(SDL_FILESYSTEM_VALI 1)
+    file(GLOB FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/vali/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${FILESYSTEM_SOURCES})
+    set(HAVE_SDL_FILESYSTEM TRUE)
+  endif()
+  
+  if(SDL_LOADSO)
+    set(SDL_LOADSO_DLOPEN 1)
+    file(GLOB LOADSO_SOURCES ${SDL2_SOURCE_DIR}/src/loadso/dlopen/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${LOADSO_SOURCES})
+    set(HAVE_SDL_LOADSO TRUE)
+  endif()
+
+  if(SDL_THREADS)
+    set(SDL_THREAD_VALI 1)
+    file(GLOB THREADS_SOURCES ${SDL2_SOURCE_DIR}/src/thread/vali/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${THREADS_SOURCES})
+    set(HAVE_SDL_THREADS TRUE)
+  endif()
+
+  if(SDL_TIMERS)
+    set(SDL_TIMER_VALI 1)
+    file(GLOB TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/vali/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${TIMER_SOURCES})
+    set(HAVE_SDL_TIMERS TRUE)
+  endif()
 endif()
 
 if(VIDEO_VULKAN)
@@ -2070,6 +2100,10 @@ endif()
 
 if(NOT SDLMAIN_SOURCES)
   file(GLOB SDLMAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/dummy/*.c)
+endif()
+
+if(VALI AND SDL_SHARED)
+  set(SOURCE_FILES ${SOURCE_FILES} ${SDL2_SOURCE_DIR}/src/SDL_dllmain.c)
 endif()
 
 # Append the -MMD -MT flags
@@ -2241,7 +2275,7 @@ if(SDL_SHARED)
       SOVERSION ${LT_REVISION}
       OUTPUT_NAME "SDL2-${LT_RELEASE}")
   else()
-    if(WINDOWS OR CYGWIN)
+    if(WINDOWS OR CYGWIN OR VALI)
       set_target_properties(SDL2 PROPERTIES
         DEFINE_SYMBOL DLL_EXPORT)
     endif()
@@ -2250,7 +2284,7 @@ if(SDL_SHARED)
       SOVERSION ${LT_REVISION}
       OUTPUT_NAME "SDL2")
   endif()
-  if(MSVC AND NOT LIBC)
+  if((MSVC OR VALI) AND NOT LIBC)
     # Don't try to link with the default set of libraries.
     set_target_properties(SDL2 PROPERTIES LINK_FLAGS_RELEASE "/NODEFAULTLIB")
     set_target_properties(SDL2 PROPERTIES LINK_FLAGS_DEBUG "/NODEFAULTLIB")
@@ -2277,7 +2311,7 @@ if(ANDROID)
     add_library(SDL2::hidapi ALIAS hidapi)
   endif()
 
-  if(MSVC AND NOT LIBC)
+  if((MSVC OR VALI) AND NOT LIBC)
     # Don't try to link with the default set of libraries.
     set_target_properties(hidapi PROPERTIES LINK_FLAGS_RELEASE "/NODEFAULTLIB")
     set_target_properties(hidapi PROPERTIES LINK_FLAGS_DEBUG "/NODEFAULTLIB")
@@ -2301,7 +2335,7 @@ if(SDL_STATIC)
     # clobbered, when the suffix is realized via subsequent rename.
   endif()
   set_target_properties(SDL2-static PROPERTIES POSITION_INDEPENDENT_CODE ${SDL_STATIC_PIC})
-  if(MSVC AND NOT LIBC)
+  if((MSVC OR VALI) AND NOT LIBC)
     set_target_properties(SDL2-static PROPERTIES LINK_FLAGS_RELEASE "/NODEFAULTLIB")
     set_target_properties(SDL2-static PROPERTIES LINK_FLAGS_DEBUG "/NODEFAULTLIB")
     set_target_properties(SDL2-static PROPERTIES STATIC_LIBRARY_FLAGS "/NODEFAULTLIB")
@@ -2432,7 +2466,7 @@ else()
   set(SOPOSTFIX "")
 endif()
 
-if(NOT (WINDOWS OR CYGWIN))
+if(NOT (WINDOWS OR CYGWIN OR VALI))
   if(SDL_SHARED)
     set(SOEXT ${CMAKE_SHARED_LIBRARY_SUFFIX}) # ".so", ".dylib", etc.
     get_target_property(SONAME SDL2 OUTPUT_NAME)

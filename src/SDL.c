@@ -24,6 +24,8 @@
 #include "core/windows/SDL_windows.h"
 #elif defined(__OS2__)
 #include <stdlib.h> /* For _exit() */
+#elif defined(__VALI__)
+#include "core/vali/SDL_vali.h"
 #elif !defined(__WINRT__)
 #include <unistd.h> /* For _exit(), etc. */
 #endif
