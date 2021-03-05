@@ -18,21 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
 
-#ifndef SDL_core_vali_h_
-#define SDL_core_vali_h_
+#include "SDL_vali.h"
+#include <asgaard/application.hpp>
 
-#include <os/mollenos.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern void Core_VALI_Initialize_Application(void);
-
-#ifdef __cplusplus
+extern "C" void Core_VALI_Initialize_Application(void)
+{
+   Asgaard::APP.Initialize();
 }
-#endif
-
-#endif // !SDL_core_vali_h_

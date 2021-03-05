@@ -18,6 +18,7 @@
 
 int main(int argc, char *argv[])
 {
+    Core_VALI_Initialize_Application();
     SDL_SetMainReady();
     result = SDL_main(argc, argv);
     return result;

@@ -18,21 +18,25 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+
+#ifndef SDL_valiosmesa_h_
+#define SDL_valiosmesa_h_
+
 #include "../../SDL_internal.h"
 
-#ifndef SDL_core_vali_h_
-#define SDL_core_vali_h_
+#include "SDL_valivideo.h"
 
-#include <os/mollenos.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+extern int           VALI_OSGL_LoadLibrary(_THIS, const char *path);
+extern void*         VALI_OSGL_GetProcAddress(_THIS, const char *proc);
+extern void          VALI_OSGL_UnloadLibrary(_THIS);
+extern SDL_GLContext VALI_OSGL_CreateContext(_THIS, SDL_Window * window);
+extern int           VALI_OSGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
+extern int           VALI_OSGL_SetSwapInterval(_THIS, int interval);
+extern int           VALI_OSGL_GetSwapInterval(_THIS);
+extern int           VALI_OSGL_SwapWindow(_THIS, SDL_Window * window);
+extern void          VALI_OSGL_DeleteContext(_THIS, SDL_GLContext context);
 
-extern void Core_VALI_Initialize_Application(void);
+#endif /* SDL_valiosmesa_h_ */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // !SDL_core_vali_h_
+/* vi: set ts=4 sw=4 expandtab: */

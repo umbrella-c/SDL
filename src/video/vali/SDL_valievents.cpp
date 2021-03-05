@@ -22,16 +22,14 @@
 
 #if SDL_VIDEO_DRIVER_VALI
 
-#include "../../events/SDL_events.h"
-
 #include "SDL_valivideo.h"
-#include "SDL_valievents_c.h"
+#include "SDL_valievents.h"
 #include <asgaard/application.hpp>
 
 void
 VALI_PumpEvents(_THIS)
 {
-   APP.PumpMessages();
+   Asgaard::APP.PumpMessages();
 }
 
 #endif /* SDL_VIDEO_DRIVER_VALI */

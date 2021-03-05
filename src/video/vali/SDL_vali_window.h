@@ -64,7 +64,7 @@ public:
     
     ~SdlWindow() { }
     
-    void CreateWindowBuffer(enum PixelFormat format);
+    void CreateWindowBuffer(enum Asgaard::PixelFormat format);
     void DeleteWindowBuffer();
     void UpdateTitle(const char* title);
     void RequestRedraw();
@@ -76,7 +76,6 @@ private:
     void OnCreated(Asgaard::Object* createdObject) override;
     void OnRefreshed(Asgaard::MemoryBuffer* buffer) override;
     void OnKeyEvent(const Asgaard::KeyEvent& keyEvent) override;
-    void DescriptorEvent(int iod, unsigned int events) override;
     void Teardown() override;
 
 private:

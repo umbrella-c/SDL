@@ -24,46 +24,47 @@
 
 #include "../SDL_sysvideo.h"
 #include "SDL_valiframebuffer.h"
+#include "SDL_vali_window.h"
 
 int SDL_VALI_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch)
 {
-    auto window = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
-    if (window == nullptr) {
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
         return -1;
     }
 
     // Create a new window buffer
-    if (window->GetBuffer()) {
-        window->DeleteWindowBuffer();
+    if (sdlWindow->GetBuffer()) {
+        sdlWindow->DeleteWindowBuffer();
     }
 
-    window->CreateWindowBuffer(Asgaard::PixelFormat::A8B8G8R8);
+    sdlWindow->CreateWindowBuffer(Asgaard::PixelFormat::A8B8G8R8);
 
     *format = SDL_PIXELFORMAT_ABGR8888;
-    *pixels = window->GetBuffer()->Buffer();
-    *pitch = window->GetBuffer()->Stride();
+    *pixels = sdlWindow->GetBuffer()->Buffer();
+    *pitch = sdlWindow->GetBuffer()->Stride();
     return 0;
 }
 
 int SDL_VALI_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, int numrects)
 {
-    auto window = (SdlWindow*)SDL_GetWindowData(window, VALI_WINDOW_DATA);
-    if (window == nullptr) {
+    auto sdlWindow = (SdlWindow*)SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
         return -1;
     }
 
-    window->RequestRedraw();
+    sdlWindow->RequestRedraw();
     return 0;
 }
 
 void SDL_VALI_DestroyWindowFramebuffer(_THIS, SDL_Window * window)
 {
-    auto window = (SdlWindow*)SDL_GetWindowData(window, VALI_WINDOW_DATA);
-    if (window == nullptr) {
+    auto sdlWindow = (SdlWindow*)SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
         return;
     }
 
-    window->DeleteWindowBuffer();
+    sdlWindow->DeleteWindowBuffer();
 }
 
 #endif /* SDL_VIDEO_DRIVER_VALI */

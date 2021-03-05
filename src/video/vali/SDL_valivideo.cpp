@@ -20,19 +20,21 @@
 */
 #include "../../SDL_internal.h"
 
-#define SDL_VIDEO_DRIVER_VALI 1
 #if SDL_VIDEO_DRIVER_VALI
 
+extern "C" {
 #include "SDL_video.h"
 #include "SDL_mouse.h"
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"
 #include "../../events/SDL_events_c.h"
+}
 
 #include "SDL_valivideo.h"
 #include "SDL_valievents.h"
 #include "SDL_valiframebuffer.h"
 #include "SDL_vali_window.h"
+#include "SDL_valiosmesa.h"
 
 #define VALIVID_DRIVER_NAME "vali"
 
@@ -40,8 +42,6 @@
 static int  VALI_VideoInit(_THIS);
 static int  VALI_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
 static void VALI_VideoQuit(_THIS);
-
-extern SdlWindow* m_window;
 
 static void
 VALI_DeleteDevice(SDL_VideoDevice * device)
@@ -61,16 +61,27 @@ VALI_CreateDevice(int devindex)
         return (0);
     }
 
-    /* Set the function pointers */
-    device->VideoInit = VALI_VideoInit;
-    device->VideoQuit = VALI_VideoQuit;
-    device->SetDisplayMode = VALI_SetDisplayMode;
-    device->PumpEvents = VALI_PumpEvents;
-    device->CreateSDLWindow = SDL_VALI_CreateWindow;
-    device->DestroyWindow = SDL_VALI_DestroyWindow;
-    device->CreateWindowFramebuffer = SDL_VALI_CreateWindowFramebuffer;
-    device->UpdateWindowFramebuffer = SDL_VALI_UpdateWindowFramebuffer;
+    device->VideoInit                = VALI_VideoInit;
+    device->VideoQuit                = VALI_VideoQuit;
+    device->SetDisplayMode           = VALI_SetDisplayMode;
+    device->PumpEvents               = VALI_PumpEvents;
+    device->CreateSDLWindow          = SDL_VALI_CreateWindow;
+    device->DestroyWindow            = SDL_VALI_DestroyWindow;
+    device->CreateWindowFramebuffer  = SDL_VALI_CreateWindowFramebuffer;
+    device->UpdateWindowFramebuffer  = SDL_VALI_UpdateWindowFramebuffer;
     device->DestroyWindowFramebuffer = SDL_VALI_DestroyWindowFramebuffer;
+
+#if SDL_VIDEO_OPENGL_OSMESA
+    device->GL_LoadLibrary     = VALI_OSGL_LoadLibrary;
+    device->GL_GetProcAddress  = VALI_OSGL_GetProcAddress;
+    device->GL_UnloadLibrary   = VALI_OSGL_UnloadLibrary;
+    device->GL_CreateContext   = VALI_OSGL_CreateContext;
+    device->GL_MakeCurrent     = VALI_OSGL_MakeCurrent;
+    device->GL_SetSwapInterval = VALI_OSGL_SetSwapInterval;
+    device->GL_GetSwapInterval = VALI_OSGL_GetSwapInterval;
+    device->GL_SwapWindow      = VALI_OSGL_SwapWindow;
+    device->GL_DeleteContext   = VALI_OSGL_DeleteContext;
+#endif
 
     device->free = VALI_DeleteDevice;
 
@@ -81,7 +92,6 @@ VideoBootStrap VALI_bootstrap = {
     VALIVID_DRIVER_NAME, "SDL vali video driver", VALI_CreateDevice
 };
 
-
 int
 VALI_VideoInit(_THIS)
 {
@@ -89,21 +99,21 @@ VALI_VideoInit(_THIS)
 
     mode.format = SDL_PIXELFORMAT_RGB888;
 
-    mode.w = m_window->GetScreen()->GetCurrentWidth();
-    mode.h = m_window->GetScreen()->GetCurrentHeight();
-    mode.refresh_rate = m_window->GetScreen()->GetCurrentRefreshRate();
+    mode.w = Asgaard::APP.GetScreen()->GetCurrentWidth();
+    mode.h = Asgaard::APP.GetScreen()->GetCurrentHeight();
+    mode.refresh_rate = Asgaard::APP.GetScreen()->GetCurrentRefreshRate();
     mode.driverdata = NULL;
     if (SDL_AddBasicVideoDisplay(&mode) < 0) {
         return -1;
     }
     
-    for (const& mode : m_window->GetScreen()->GetModes()) {
+    for (const auto& screenMode : Asgaard::APP.GetScreen()->GetModes()) {
         SDL_zero(mode);
 
         mode.format = SDL_PIXELFORMAT_RGB888;
-        mode.w = mode->ResolutionX();
-        mode.h = mode->ResolutionY();
-        mode.refresh_rate = mode->RefreshRate();
+        mode.w = screenMode->ResolutionX();
+        mode.h = screenMode->ResolutionY();
+        mode.refresh_rate = screenMode->RefreshRate();
         mode.driverdata = NULL;
 
         SDL_AddDisplayMode(&_this->displays[0], &mode);
