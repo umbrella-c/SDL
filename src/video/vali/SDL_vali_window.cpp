@@ -20,12 +20,16 @@
  */
 
 #include "SDL_vali_window.h"
+#include <asgaard/object_manager.hpp>
+#include <asgaard/pointer.hpp>
 #include <os/keycodes.h>
 #include "SDL_keycode.h"
 #include "SDL_events.h"
 
 extern "C" {
 #include "../../events/SDL_keyboard_c.h"
+#include "../../events/SDL_mouse_c.h"
+#include "../../events/SDL_windowevents_c.h"
 }
 
 static SDL_Scancode g_sdlScanCodesMap[VK_KEYCOUNT] = { 
@@ -172,21 +176,16 @@ void SdlWindow::OnCreated(Asgaard::Object* createdObject)
         m_memory = Asgaard::MemoryPool::Create(this, screenSize);
     }
     else if (createdObject->Id() == m_memory->Id()) {
-        // Create initial buffer the size of this surface
-        m_buffer = Asgaard::MemoryBuffer::Create(this, m_memory, 0, Dimensions().Width(),
-            Dimensions().Height(), Asgaard::PixelFormat::A8B8G8R8);
-    }
-    else if (createdObject->Id() == m_buffer->Id()) {
-        // Create the window decoration
-        //Asgaard::Rectangle decorationDimensions(0, 0, Dimensions().Width(), 64);
-        //m_decoration = Asgaard::OM.CreateClientObject<Asgaard::WindowDecoration>(m_screen, Id(), decorationDimensions);
+        Asgaard::Rectangle decorationDimensions(0, 0, Dimensions().Width(), 35);
+        m_decoration = Asgaard::OM.CreateClientObject<Asgaard::WindowDecoration>(m_screen, Id(), decorationDimensions);
+        m_decoration->Subscribe(this);
 
         // Now all resources are created
         SetDropShadow(Asgaard::Rectangle(-10, -10, 20, 30));
+        OnRefreshed(nullptr);
+    }
+    else if (createdObject->Id() == m_buffer->Id()) {
         SetBuffer(m_buffer);
-        OnRefreshed(m_buffer.get());
-        ResetBuffer();
-        RequestRedraw();
     }
 }
 
@@ -207,6 +206,28 @@ void SdlWindow::Teardown()
 
 }
 
+void SdlWindow::Notification(Publisher* source, int event, void* data)
+{
+    auto wdeco = dynamic_cast<Asgaard::WindowDecoration*>(source);
+    if (wdeco) {
+        switch (static_cast<enum Asgaard::WindowDecoration::Notification>(event)) {
+            case Asgaard::WindowDecoration::Notification::MINIMIZE: {
+                SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_MINIMIZED, 0, 0);
+            } break;
+            case Asgaard::WindowDecoration::Notification::MAXIMIZE: {
+                SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_MAXIMIZED, 0, 0);
+            } break;
+            case Asgaard::WindowDecoration::Notification::INITIATE_DRAG: {
+                uint32_t pointerId = static_cast<int>(reinterpret_cast<intptr_t>(data));
+                auto pointer = std::dynamic_pointer_cast<Asgaard::Pointer>(Asgaard::OM[pointerId]);
+                InitiateMove(pointer);
+            } break;
+
+            default: break;
+        }
+    }
+}
+
 void SdlWindow::OnKeyEvent(const Asgaard::KeyEvent& keyEvent)
 {
     // Convert to SDL scancode
@@ -215,36 +236,69 @@ void SdlWindow::OnKeyEvent(const Asgaard::KeyEvent& keyEvent)
         g_sdlScanCodesMap[keyEvent.KeyCode()]);
 }
 
-void SdlWindow::ResetBuffer()
+void SdlWindow::OnResized(enum SurfaceEdges, int width, int height)
 {
-    Asgaard::Drawing::Painter paint(m_buffer);
-    
-    //paint.SetColor(0xFA, 0xEF, 0xDD);
-    paint.SetFillColor(0xF0, 0xF0, 0xF0);
-    paint.RenderFill();
+    SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_RESIZED, width, height);
 }
 
-void SdlWindow::CreateWindowBuffer(enum Asgaard::PixelFormat format)
+void SdlWindow::OnResizedEnd()
 {
-    m_buffer = Asgaard::MemoryBuffer::Create(this, m_memory, 0, Dimensions().Width(),
-        Dimensions().Height(), format);
-    SetBuffer(m_buffer);
+
 }
 
-void SdlWindow::DeleteWindowBuffer()
+void SdlWindow::OnFocus(bool focus)
 {
-    if (m_buffer) {
-        m_buffer->Destroy();
+    SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), 
+        (focus ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST), 
+        0, 0);
+}
+
+void SdlWindow::OnMouseEnter(const std::shared_ptr<Asgaard::Pointer>& pointer, int localX, int localY)
+{
+    m_currentPointer = pointer;
+    SDL_SetMouseFocus(static_cast<SDL_Window*>(m_sdlContext));
+}
+
+void SdlWindow::OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>& pointer)
+{
+    if (m_currentPointer->Id() == pointer->Id()) {
+        m_currentPointer.reset();
     }
+    SDL_SetMouseFocus(nullptr);
 }
 
-void SdlWindow::UpdateTitle(const char* title)
+void SdlWindow::OnMouseMove(const std::shared_ptr<Asgaard::Pointer>& pointer, int localX, int localY)
 {
-    if (m_decoration) {
-        std::string cppTitle(title);
-        m_decoration->SetTitle(cppTitle);
-        m_decoration->RequestRedraw();
+    SDL_Mouse* mouse = SDL_GetMouse();
+    SDL_SendMouseMotion(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, 0, localX, localY);
+}
+
+void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, unsigned int buttons)
+{
+    SDL_Mouse* mouse = SDL_GetMouse();
+
+    if ((buttons & 0x1) && !(m_previousButtonState & 0x1)) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, SDL_BUTTON_LEFT);
     }
+    else if (!(buttons & 0x1) && (m_previousButtonState & 0x1)) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, SDL_BUTTON_LEFT);
+    }
+
+    if ((buttons & 0x2) && !(m_previousButtonState & 0x2)) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, SDL_BUTTON_MIDDLE);
+    }
+    else if (!(buttons & 0x2) && (m_previousButtonState & 0x2)) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, SDL_BUTTON_MIDDLE);
+    }
+
+    if ((buttons & 0x4) && !(m_previousButtonState & 0x4)) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, SDL_BUTTON_RIGHT);
+    }
+    else if (!(buttons & 0x4) && (m_previousButtonState & 0x4)) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, SDL_BUTTON_RIGHT);
+    }
+
+    m_previousButtonState = buttons;
 }
 
 void SdlWindow::RequestRedraw()
@@ -264,6 +318,80 @@ void SdlWindow::Redraw()
     ApplyChanges();
 }
 
+void SdlWindow::CreateWindowBuffer(enum Asgaard::PixelFormat format)
+{
+    m_buffer = Asgaard::MemoryBuffer::Create(this, m_memory, 0, Dimensions().Width(),
+        Dimensions().Height(), format);
+    SetBuffer(m_buffer);
+}
+
+void SdlWindow::DeleteWindowBuffer()
+{
+    if (m_buffer) {
+        m_buffer->Unsubscribe(this);
+        m_buffer->Destroy();
+        m_buffer.reset();
+    }
+}
+
+void SdlWindow::UpdateTitle(const char* title)
+{
+    if (m_decoration) {
+        m_decoration->SetTitle(std::string(title));
+        m_decoration->RequestRedraw();
+    }
+}
+
+void SdlWindow::UpdateIcon(int width, int height, Asgaard::PixelFormat format, const void* data)
+{
+    if (m_decoration) {
+        m_decoration->UpdateIcon(width, height, format, data);
+        m_decoration->RequestRedraw();
+    }
+}
+
+void SdlWindow::ShowWindow()
+{
+    SetBuffer(m_buffer);
+    ApplyChanges();
+}
+
+void SdlWindow::HideWindow()
+{
+    auto nullPointer = std::shared_ptr<Asgaard::MemoryBuffer>(nullptr);
+    SetBuffer(nullPointer);
+    ApplyChanges();
+}
+
+void SdlWindow::RaiseWindow()
+{
+    // no-op, not implemented
+}
+
+void SdlWindow::RestoreWindow()
+{
+    // what do?
+}
+
+void SdlWindow::SetWindowBordered(bool set)
+{
+    // what do?
+}
+
+void SdlWindow::SetWindowResizable(bool set)
+{
+    // resizing has not been implemented
+}
+
+void SdlWindow::SetWindowGrab(bool set)
+{
+    // keep track of current mouse
+    if (m_currentPointer) {
+        if (set) GrabPointer(m_currentPointer);
+        else     UngrabPointer(m_currentPointer);
+    }
+}
+
 int SDL_VALI_CreateWindow(_THIS, SDL_Window * window)
 {
     int w, h;
@@ -275,7 +403,7 @@ int SDL_VALI_CreateWindow(_THIS, SDL_Window * window)
         return -1;
     }
 
-    auto sdlWindow = screen->CreateWindow<SdlWindow>(Asgaard::Rectangle(0, 0, w, h));
+    auto sdlWindow = screen->CreateWindow<SdlWindow>(Asgaard::Rectangle(0, 0, w, h), static_cast<void*>(window));
     if (sdlWindow == nullptr) {
         return -1;
     }
@@ -292,4 +420,178 @@ void SDL_VALI_DestroyWindow(_THIS, SDL_Window * window)
     }
     
     sdlWindow->Destroy();
+}
+
+void SDL_VALI_SetWindowTitle(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->UpdateTitle(window->title);
+}
+
+
+
+void SDL_VALI_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    Asgaard::PixelFormat format;
+    switch (icon->format->format) {
+        case SDL_PIXELFORMAT_RGBA32: format = Asgaard::PixelFormat::R8G8B8A8; break;
+        case SDL_PIXELFORMAT_ARGB32: format = Asgaard::PixelFormat::A8R8G8B8; break;
+        case SDL_PIXELFORMAT_BGRA32: format = Asgaard::PixelFormat::B8G8R8A8; break;
+        case SDL_PIXELFORMAT_ABGR32: format = Asgaard::PixelFormat::A8B8G8R8; break;
+        case SDL_PIXELFORMAT_XRGB8888: format = Asgaard::PixelFormat::X8R8G8B8; break;
+        case SDL_PIXELFORMAT_XBGR8888: format = Asgaard::PixelFormat::X8B8G8R8; break;
+        default: format = Asgaard::PixelFormat::A8R8G8B8; break;
+    }
+
+    SDL_LockSurface(icon);
+    sdlWindow->UpdateIcon(icon->w, icon->h, format, icon->pixels);
+    SDL_UnlockSurface(icon);
+}
+
+void SDL_VALI_SetWindowPosition(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    // no-op
+}
+
+void SDL_VALI_SetWindowSize(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    // no-op
+}
+
+int SDL_VALI_GetWindowBordersSize(_THIS, SDL_Window * window, int *top, int *left, int *bottom, int *right)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return -1;
+    }
+
+    *top = 35;
+    *left = 1;
+    *bottom = 1;
+    *right = 1;
+    return 0;
+}
+
+void SDL_VALI_ShowWindow(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->ShowWindow();
+}
+
+void SDL_VALI_HideWindow(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->HideWindow();
+}
+
+void SDL_VALI_RaiseWindow(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->RaiseWindow();
+}
+
+void SDL_VALI_MaximizeWindow(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->RequestFullscreenMode(Asgaard::Surface::FullscreenMode::NORMAL);
+}
+
+void SDL_VALI_MinimizeWindow(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->HideWindow();
+}
+
+void SDL_VALI_RestoreWindow(_THIS, SDL_Window * window)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->RestoreWindow();
+}
+
+void SDL_VALI_SetWindowBordered(_THIS, SDL_Window * window, SDL_bool bordered)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->SetWindowBordered(bordered == SDL_TRUE ? true : false);
+}
+
+void SDL_VALI_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->SetWindowResizable(resizable == SDL_TRUE ? true : false);
+}
+
+void SDL_VALI_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    if (fullscreen == SDL_TRUE) {
+        sdlWindow->RequestFullscreenMode(Asgaard::Surface::FullscreenMode::NORMAL);
+    }
+    else {
+        sdlWindow->RequestFullscreenMode(Asgaard::Surface::FullscreenMode::EXIT);
+    }
+}
+
+void SDL_VALI_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
+{
+    auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
+    if (sdlWindow == nullptr) {
+        return;
+    }
+
+    sdlWindow->SetWindowGrab(grabbed == SDL_TRUE ? true : false);
 }

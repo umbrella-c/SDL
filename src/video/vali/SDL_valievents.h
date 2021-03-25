@@ -26,7 +26,7 @@
 
 #include "SDL_valivideo.h"
 
-extern void VALI_PumpEvents(_THIS);
+extern void     VALI_PumpEvents(_THIS);
 
 #endif /* SDL_valievents_h_ */
 

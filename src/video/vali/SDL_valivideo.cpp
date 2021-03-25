@@ -61,8 +61,10 @@ VALI_CreateDevice(int devindex)
         return (0);
     }
 
+    // essential implementations
     device->VideoInit                = VALI_VideoInit;
     device->VideoQuit                = VALI_VideoQuit;
+    device->free                     = VALI_DeleteDevice;
     device->SetDisplayMode           = VALI_SetDisplayMode;
     device->PumpEvents               = VALI_PumpEvents;
     device->CreateSDLWindow          = SDL_VALI_CreateWindow;
@@ -71,6 +73,24 @@ VALI_CreateDevice(int devindex)
     device->UpdateWindowFramebuffer  = SDL_VALI_UpdateWindowFramebuffer;
     device->DestroyWindowFramebuffer = SDL_VALI_DestroyWindowFramebuffer;
 
+    // window functionality
+    device->SetWindowTitle       = SDL_VALI_SetWindowTitle;
+    device->SetWindowIcon        = SDL_VALI_SetWindowIcon;
+    device->SetWindowPosition    = SDL_VALI_SetWindowPosition;
+    device->SetWindowSize        = SDL_VALI_SetWindowSize;
+    device->GetWindowBordersSize = SDL_VALI_GetWindowBordersSize;
+    device->ShowWindow           = SDL_VALI_ShowWindow;
+    device->HideWindow           = SDL_VALI_HideWindow;
+    device->RaiseWindow          = SDL_VALI_RaiseWindow;
+    device->MaximizeWindow       = SDL_VALI_MaximizeWindow;
+    device->MinimizeWindow       = SDL_VALI_MinimizeWindow;
+    device->RestoreWindow        = SDL_VALI_RestoreWindow;
+    device->SetWindowBordered    = SDL_VALI_SetWindowBordered;
+    device->SetWindowResizable   = SDL_VALI_SetWindowResizable;
+    device->SetWindowFullscreen  = SDL_VALI_SetWindowFullscreen;
+    device->SetWindowMouseGrab   = SDL_VALI_SetWindowMouseGrab;
+
+    // graphics
 #if SDL_VIDEO_OPENGL_OSMESA
     device->GL_LoadLibrary     = VALI_OSGL_LoadLibrary;
     device->GL_GetProcAddress  = VALI_OSGL_GetProcAddress;
@@ -82,8 +102,6 @@ VALI_CreateDevice(int devindex)
     device->GL_SwapWindow      = VALI_OSGL_SwapWindow;
     device->GL_DeleteContext   = VALI_OSGL_DeleteContext;
 #endif
-
-    device->free = VALI_DeleteDevice;
 
     return device;
 }

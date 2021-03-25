@@ -54,19 +54,31 @@
 
 class SdlWindow final : public Asgaard::WindowBase {
 public:
-    SdlWindow(uint32_t id, const Asgaard::Rectangle& dimensions)
+    SdlWindow(uint32_t id, const Asgaard::Rectangle& dimensions, void* sdlContext)
         : WindowBase(id, dimensions)
         , m_memory(nullptr)
         , m_buffer(nullptr)
         , m_decoration(nullptr)
+        , m_currentPointer(nullptr)
+        , m_sdlContext(sdlContext)
+        , m_previousButtonState(0)
         , m_redraw(false)
         , m_redrawReady(false) { }
     
     ~SdlWindow() { }
     
+    void UpdateTitle(const char* title);
+    void UpdateIcon(int width, int height, Asgaard::PixelFormat format, const void* data);
+    void ShowWindow();
+    void HideWindow();
+    void RaiseWindow();
+    void RestoreWindow();
+    void SetWindowBordered(bool set);
+    void SetWindowResizable(bool set);
+    void SetWindowGrab(bool set);
+
     void CreateWindowBuffer(enum Asgaard::PixelFormat format);
     void DeleteWindowBuffer();
-    void UpdateTitle(const char* title);
     void RequestRedraw();
 
 public:
@@ -78,6 +90,16 @@ private:
     void OnKeyEvent(const Asgaard::KeyEvent& keyEvent) override;
     void Teardown() override;
 
+    void Notification(Publisher*, int = 0, void* = 0) override;
+
+    void OnResized(enum SurfaceEdges, int width, int height) override;
+    void OnResizedEnd() override;
+    void OnFocus(bool) override;
+    void OnMouseEnter(const std::shared_ptr<Asgaard::Pointer>&, int localX, int localY) override;
+    void OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>&) override;
+    void OnMouseMove(const std::shared_ptr<Asgaard::Pointer>&, int localX, int localY) override;
+    void OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, unsigned int buttons) override;
+
 private:
     void ResetBuffer();
     void Redraw();
@@ -86,8 +108,11 @@ private:
     std::shared_ptr<Asgaard::MemoryPool>       m_memory;
     std::shared_ptr<Asgaard::MemoryBuffer>     m_buffer;
     std::shared_ptr<Asgaard::WindowDecoration> m_decoration;
+    std::shared_ptr<Asgaard::Pointer>          m_currentPointer;
 
-    bool m_redraw;
+    void* m_sdlContext;
+    unsigned int m_previousButtonState;
+    bool  m_redraw;
     std::atomic<bool> m_redrawReady;
 };
 
@@ -96,5 +121,20 @@ private:
 #include "SDL_valivideo.h"
 extern int  SDL_VALI_CreateWindow(_THIS, SDL_Window * window);
 extern void SDL_VALI_DestroyWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_SetWindowTitle(_THIS, SDL_Window * window);
+extern void SDL_VALI_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon);
+extern void SDL_VALI_SetWindowPosition(_THIS, SDL_Window * window);
+extern void SDL_VALI_SetWindowSize(_THIS, SDL_Window * window);
+extern int  SDL_VALI_GetWindowBordersSize(_THIS, SDL_Window * window, int *top, int *left, int *bottom, int *right);
+extern void SDL_VALI_ShowWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_HideWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_RaiseWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_MaximizeWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_MinimizeWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_RestoreWindow(_THIS, SDL_Window * window);
+extern void SDL_VALI_SetWindowBordered(_THIS, SDL_Window * window, SDL_bool bordered);
+extern void SDL_VALI_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable);
+extern void SDL_VALI_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen);
+extern void SDL_VALI_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
 
 #endif // !SDL_core_vali_h_

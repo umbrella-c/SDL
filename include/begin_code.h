@@ -51,7 +51,7 @@
 
 /* Some compilers use a special export keyword */
 #ifndef DECLSPEC
-# if defined(__WIN32__) || defined(__WINRT__) || defined(__CYGWIN__)
+# if defined(__WIN32__) || defined(__WINRT__) || defined(__CYGWIN__) || defined(MOLLENOS)
 #  ifdef DLL_EXPORT
 #   define DECLSPEC __declspec(dllexport)
 #  else
