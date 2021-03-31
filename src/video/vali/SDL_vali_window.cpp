@@ -20,6 +20,7 @@
  */
 
 #include "SDL_vali_window.h"
+#include <asgaard/drawing/image.hpp>
 #include <asgaard/object_manager.hpp>
 #include <asgaard/pointer.hpp>
 #include <os/keycodes.h>
@@ -165,28 +166,32 @@ static SDL_Scancode g_sdlScanCodesMap[VK_KEYCOUNT] = {
     SDL_SCANCODE_UNKNOWN,
     SDL_SCANCODE_SLEEP,
     SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
+    SDL_SCANCODE_UNKNOWN,
     SDL_SCANCODE_UNKNOWN
 };
 
-void SdlWindow::OnCreated(Asgaard::Object* createdObject)
+void SdlWindow::OnCreated()
 {
-    if (createdObject->Id() == Id()) {
-        // Don't hardcode 4 bytes per pixel, this is only because we assume a format of ARGB32
-        auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
-        m_memory = Asgaard::MemoryPool::Create(this, screenSize);
-    }
-    else if (createdObject->Id() == m_memory->Id()) {
-        Asgaard::Rectangle decorationDimensions(0, 0, Dimensions().Width(), 35);
-        m_decoration = Asgaard::OM.CreateClientObject<Asgaard::WindowDecoration>(m_screen, Id(), decorationDimensions);
-        m_decoration->Subscribe(this);
+    // Don't hardcode 4 bytes per pixel, this is only because we assume a format of ARGB32
+    auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
+    m_memory = Asgaard::MemoryPool::Create(this, screenSize);
 
-        // Now all resources are created
-        SetDropShadow(Asgaard::Rectangle(-10, -10, 20, 30));
-        OnRefreshed(nullptr);
-    }
-    else if (createdObject->Id() == m_buffer->Id()) {
-        SetBuffer(m_buffer);
-    }
+    // Now all resources are created
+    SetDropShadow(Asgaard::Rectangle(-10, -10, 20, 30));
+    OnRefreshed(nullptr);
 }
 
 void SdlWindow::OnRefreshed(Asgaard::MemoryBuffer* buffer)
@@ -201,31 +206,15 @@ void SdlWindow::OnRefreshed(Asgaard::MemoryBuffer* buffer)
     }
 }
 
-void SdlWindow::Teardown()
-{
 
+void SdlWindow::OnMinimize()
+{
+    SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_MINIMIZED, 0, 0);
 }
 
-void SdlWindow::Notification(Publisher* source, int event, void* data)
+void SdlWindow::OnMaximize()
 {
-    auto wdeco = dynamic_cast<Asgaard::WindowDecoration*>(source);
-    if (wdeco) {
-        switch (static_cast<enum Asgaard::WindowDecoration::Notification>(event)) {
-            case Asgaard::WindowDecoration::Notification::MINIMIZE: {
-                SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_MINIMIZED, 0, 0);
-            } break;
-            case Asgaard::WindowDecoration::Notification::MAXIMIZE: {
-                SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_MAXIMIZED, 0, 0);
-            } break;
-            case Asgaard::WindowDecoration::Notification::INITIATE_DRAG: {
-                uint32_t pointerId = static_cast<int>(reinterpret_cast<intptr_t>(data));
-                auto pointer = std::dynamic_pointer_cast<Asgaard::Pointer>(Asgaard::OM[pointerId]);
-                InitiateMove(pointer);
-            } break;
-
-            default: break;
-        }
-    }
+    SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_MAXIMIZED, 0, 0);
 }
 
 void SdlWindow::OnKeyEvent(const Asgaard::KeyEvent& keyEvent)
@@ -239,11 +228,6 @@ void SdlWindow::OnKeyEvent(const Asgaard::KeyEvent& keyEvent)
 void SdlWindow::OnResized(enum SurfaceEdges, int width, int height)
 {
     SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_RESIZED, width, height);
-}
-
-void SdlWindow::OnResizedEnd()
-{
-
 }
 
 void SdlWindow::OnFocus(bool focus)
@@ -273,32 +257,17 @@ void SdlWindow::OnMouseMove(const std::shared_ptr<Asgaard::Pointer>& pointer, in
     SDL_SendMouseMotion(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, 0, localX, localY);
 }
 
-void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, unsigned int buttons)
+void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, enum Asgaard::Pointer::Buttons button, bool pressed)
 {
     SDL_Mouse* mouse = SDL_GetMouse();
+    int sdlIndex = static_cast<int>(button) + 1;
 
-    if ((buttons & 0x1) && !(m_previousButtonState & 0x1)) {
-        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, SDL_BUTTON_LEFT);
+    if (pressed) {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, sdlIndex);
     }
-    else if (!(buttons & 0x1) && (m_previousButtonState & 0x1)) {
-        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, SDL_BUTTON_LEFT);
+    else {
+        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, sdlIndex);
     }
-
-    if ((buttons & 0x2) && !(m_previousButtonState & 0x2)) {
-        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, SDL_BUTTON_MIDDLE);
-    }
-    else if (!(buttons & 0x2) && (m_previousButtonState & 0x2)) {
-        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, SDL_BUTTON_MIDDLE);
-    }
-
-    if ((buttons & 0x4) && !(m_previousButtonState & 0x4)) {
-        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, SDL_BUTTON_RIGHT);
-    }
-    else if (!(buttons & 0x4) && (m_previousButtonState & 0x4)) {
-        SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_RELEASED, SDL_BUTTON_RIGHT);
-    }
-
-    m_previousButtonState = buttons;
 }
 
 void SdlWindow::RequestRedraw()
@@ -334,22 +303,6 @@ void SdlWindow::DeleteWindowBuffer()
     }
 }
 
-void SdlWindow::UpdateTitle(const char* title)
-{
-    if (m_decoration) {
-        m_decoration->SetTitle(std::string(title));
-        m_decoration->RequestRedraw();
-    }
-}
-
-void SdlWindow::UpdateIcon(int width, int height, Asgaard::PixelFormat format, const void* data)
-{
-    if (m_decoration) {
-        m_decoration->UpdateIcon(width, height, format, data);
-        m_decoration->RequestRedraw();
-    }
-}
-
 void SdlWindow::ShowWindow()
 {
     SetBuffer(m_buffer);
@@ -371,16 +324,6 @@ void SdlWindow::RaiseWindow()
 void SdlWindow::RestoreWindow()
 {
     // what do?
-}
-
-void SdlWindow::SetWindowBordered(bool set)
-{
-    // what do?
-}
-
-void SdlWindow::SetWindowResizable(bool set)
-{
-    // resizing has not been implemented
 }
 
 void SdlWindow::SetWindowGrab(bool set)
@@ -429,7 +372,7 @@ void SDL_VALI_SetWindowTitle(_THIS, SDL_Window * window)
         return;
     }
 
-    sdlWindow->UpdateTitle(window->title);
+    sdlWindow->SetTitle(window->title);
 }
 
 
@@ -453,7 +396,8 @@ void SDL_VALI_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon)
     }
 
     SDL_LockSurface(icon);
-    sdlWindow->UpdateIcon(icon->w, icon->h, format, icon->pixels);
+    auto imageptr = std::make_shared<Asgaard::Drawing::Image>(icon->pixels, format, icon->w, icon->h);
+    sdlWindow->SetIconImage(imageptr);
     SDL_UnlockSurface(icon);
 }
 
@@ -528,7 +472,7 @@ void SDL_VALI_MaximizeWindow(_THIS, SDL_Window * window)
         return;
     }
 
-    sdlWindow->RequestFullscreenMode(Asgaard::Surface::FullscreenMode::NORMAL);
+    sdlWindow->RequestFullscreenMode(SdlWindow::FullscreenMode::NORMAL);
 }
 
 void SDL_VALI_MinimizeWindow(_THIS, SDL_Window * window)
@@ -558,7 +502,7 @@ void SDL_VALI_SetWindowBordered(_THIS, SDL_Window * window, SDL_bool bordered)
         return;
     }
 
-    sdlWindow->SetWindowBordered(bordered == SDL_TRUE ? true : false);
+    sdlWindow->EnableDecoration(bordered == SDL_TRUE ? true : false);
 }
 
 void SDL_VALI_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable)
@@ -568,7 +512,7 @@ void SDL_VALI_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable)
         return;
     }
 
-    sdlWindow->SetWindowResizable(resizable == SDL_TRUE ? true : false);
+    sdlWindow->SetResizable(resizable == SDL_TRUE ? true : false);
 }
 
 void SDL_VALI_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen)
@@ -579,10 +523,10 @@ void SDL_VALI_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay *
     }
 
     if (fullscreen == SDL_TRUE) {
-        sdlWindow->RequestFullscreenMode(Asgaard::Surface::FullscreenMode::NORMAL);
+        sdlWindow->RequestFullscreenMode(SdlWindow::FullscreenMode::NORMAL);
     }
     else {
-        sdlWindow->RequestFullscreenMode(Asgaard::Surface::FullscreenMode::EXIT);
+        sdlWindow->RequestFullscreenMode(SdlWindow::FullscreenMode::EXIT);
     }
 }
 

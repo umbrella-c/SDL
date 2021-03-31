@@ -54,27 +54,21 @@
 
 class SdlWindow final : public Asgaard::WindowBase {
 public:
-    SdlWindow(uint32_t id, const Asgaard::Rectangle& dimensions, void* sdlContext)
-        : WindowBase(id, dimensions)
+    SdlWindow(uint32_t id, const std::shared_ptr<Asgaard::Screen>& screen, const Asgaard::Rectangle& dimensions, void* sdlContext)
+        : WindowBase(id, screen, dimensions)
         , m_memory(nullptr)
         , m_buffer(nullptr)
-        , m_decoration(nullptr)
         , m_currentPointer(nullptr)
         , m_sdlContext(sdlContext)
-        , m_previousButtonState(0)
         , m_redraw(false)
         , m_redrawReady(false) { }
     
     ~SdlWindow() { }
     
-    void UpdateTitle(const char* title);
-    void UpdateIcon(int width, int height, Asgaard::PixelFormat format, const void* data);
     void ShowWindow();
     void HideWindow();
     void RaiseWindow();
     void RestoreWindow();
-    void SetWindowBordered(bool set);
-    void SetWindowResizable(bool set);
     void SetWindowGrab(bool set);
 
     void CreateWindowBuffer(enum Asgaard::PixelFormat format);
@@ -85,33 +79,29 @@ public:
     const std::shared_ptr<Asgaard::MemoryBuffer>& GetBuffer() const { return m_buffer; }
 
 private:
-    void OnCreated(Asgaard::Object* createdObject) override;
+    void OnCreated() override;
     void OnRefreshed(Asgaard::MemoryBuffer* buffer) override;
     void OnKeyEvent(const Asgaard::KeyEvent& keyEvent) override;
-    void Teardown() override;
 
-    void Notification(Publisher*, int = 0, void* = 0) override;
-
+    void OnMinimize() override;
+    void OnMaximize() override;
     void OnResized(enum SurfaceEdges, int width, int height) override;
-    void OnResizedEnd() override;
     void OnFocus(bool) override;
     void OnMouseEnter(const std::shared_ptr<Asgaard::Pointer>&, int localX, int localY) override;
     void OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>&) override;
     void OnMouseMove(const std::shared_ptr<Asgaard::Pointer>&, int localX, int localY) override;
-    void OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, unsigned int buttons) override;
+    void OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, enum Asgaard::Pointer::Buttons button, bool pressed) override;
 
 private:
     void ResetBuffer();
     void Redraw();
     
 private:
-    std::shared_ptr<Asgaard::MemoryPool>       m_memory;
-    std::shared_ptr<Asgaard::MemoryBuffer>     m_buffer;
-    std::shared_ptr<Asgaard::WindowDecoration> m_decoration;
-    std::shared_ptr<Asgaard::Pointer>          m_currentPointer;
+    std::shared_ptr<Asgaard::MemoryPool>   m_memory;
+    std::shared_ptr<Asgaard::MemoryBuffer> m_buffer;
+    std::shared_ptr<Asgaard::Pointer>      m_currentPointer;
 
     void* m_sdlContext;
-    unsigned int m_previousButtonState;
     bool  m_redraw;
     std::atomic<bool> m_redrawReady;
 };
