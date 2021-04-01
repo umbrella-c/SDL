@@ -375,8 +375,6 @@ void SDL_VALI_SetWindowTitle(_THIS, SDL_Window * window)
     sdlWindow->SetTitle(window->title);
 }
 
-
-
 void SDL_VALI_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon)
 {
     auto sdlWindow = (SdlWindow*) SDL_GetWindowData(window, VALI_WINDOW_DATA);
