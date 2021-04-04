@@ -28,6 +28,7 @@ extern "C" {
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"
 #include "../../events/SDL_events_c.h"
+#include "../../core/vali/SDL_vali.h"
 }
 
 #include "SDL_valivideo.h"
@@ -42,6 +43,8 @@ extern "C" {
 static int  VALI_VideoInit(_THIS);
 static int  VALI_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
 static void VALI_VideoQuit(_THIS);
+
+static int g_appReferences = 0;
 
 static void
 VALI_DeleteDevice(SDL_VideoDevice * device)
@@ -114,6 +117,11 @@ int
 VALI_VideoInit(_THIS)
 {
     SDL_DisplayMode mode;
+
+    if (!g_appReferences) {
+        Core_VALI_Initialize_Application();
+    }
+    g_appReferences++;
 
     mode.format = SDL_PIXELFORMAT_RGB888;
 

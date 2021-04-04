@@ -64,10 +64,4 @@
 /* Enable the stub timer support (src/timer/dummy/\*.c) */
 #define SDL_TIMERS_DISABLED 1
 
-/* Enable the dummy video driver (src/video/dummy/\*.c) */
-#define SDL_VIDEO_DRIVER_DUMMY  1
-
-/* Enable the dummy filesystem driver (src/filesystem/dummy/\*.c) */
-#define SDL_FILESYSTEM_DUMMY  1
-
 #endif /* SDL_config_minimal_h_ */
