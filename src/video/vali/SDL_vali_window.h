@@ -71,7 +71,7 @@ public:
     void RestoreWindow();
     void SetWindowGrab(bool set);
 
-    void CreateWindowBuffer(enum Asgaard::PixelFormat format);
+    void CreateWindowBuffer(enum Asgaard::PixelFormat format, enum Asgaard::MemoryBuffer::Flags flags);
     void DeleteWindowBuffer();
     void RequestRedraw();
 

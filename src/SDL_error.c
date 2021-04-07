@@ -27,6 +27,8 @@
 
 #define SDL_ERRBUFIZE   1024
 
+#include <ddk/utils.h>
+
 int
 SDL_SetError(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
 {
@@ -40,7 +42,8 @@ SDL_SetError(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
         va_start(ap, fmt);
         SDL_vsnprintf(error->str, ERR_MAX_STRLEN, fmt, ap);
         va_end(ap);
-
+        
+        ERROR("%s", error->str);
         if (SDL_LogGetPriority(SDL_LOG_CATEGORY_ERROR) <= SDL_LOG_PRIORITY_DEBUG) {
             /* If we are in debug mode, print out the error message */
             SDL_LogDebug(SDL_LOG_CATEGORY_ERROR, "%s", error->str);

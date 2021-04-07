@@ -2007,6 +2007,8 @@ elseif(RISCOS)
     CheckOSS()
   endif()
 elseif(VALI)
+  add_definitions(-D__STDC_FORMAT_MACROS_64)
+
   file(GLOB VALI_CORE_SOURCES ${SDL2_SOURCE_DIR}/src/core/vali/*.cpp)
   set(SOURCE_FILES ${SOURCE_FILES} ${VALI_CORE_SOURCES})
 
@@ -2053,7 +2055,7 @@ elseif(VALI)
       set(SDL_VIDEO_RENDER_OGL 1)
       set(HAVE_VIDEO_OPENGL TRUE)
     endif()
-
+    include_directories($ENV{VALI_DDK_PATH}/include)
     link_directories($ENV{VALI_DDK_PATH}/lib)
     list(APPEND EXTRA_LIBS asgaard static_libgracht static_libddk libfreetype)
   endif()

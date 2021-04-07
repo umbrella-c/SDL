@@ -183,11 +183,16 @@ static SDL_Scancode g_sdlScanCodesMap[VK_KEYCOUNT] = {
     SDL_SCANCODE_UNKNOWN
 };
 
+#define __TRACE
+#include <ddk/utils.h>
+
 void SdlWindow::OnCreated()
 {
-    // Don't hardcode 4 bytes per pixel, this is only because we assume a format of ARGB32
-    auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
-    m_memory = Asgaard::MemoryPool::Create(this, screenSize);
+    TRACE("SdlWindow::OnCreated");
+    if (!m_memory) {
+        auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
+        m_memory = Asgaard::MemoryPool::Create(this, screenSize);
+    }
 
     // Now all resources are created
     SetDropShadow(Asgaard::Rectangle(-10, -10, 20, 30));
@@ -196,6 +201,7 @@ void SdlWindow::OnCreated()
 
 void SdlWindow::OnRefreshed(Asgaard::MemoryBuffer* buffer)
 {
+    TRACE("SdlWindow::OnRefreshed");
     // Request redraw
     if (m_redraw) {
         Redraw();
@@ -272,6 +278,7 @@ void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, enum Asga
 
 void SdlWindow::RequestRedraw()
 {
+    TRACE("SdlWindow::RequestRedraw");
     bool shouldRedraw = m_redrawReady.exchange(false);
     if (shouldRedraw) {
         Redraw();
@@ -283,19 +290,27 @@ void SdlWindow::RequestRedraw()
 
 void SdlWindow::Redraw()
 {
+    TRACE("SdlWindow::Redraw");
     MarkDamaged(Dimensions());
     ApplyChanges();
 }
 
-void SdlWindow::CreateWindowBuffer(enum Asgaard::PixelFormat format)
+void SdlWindow::CreateWindowBuffer(enum Asgaard::PixelFormat format, enum Asgaard::MemoryBuffer::Flags flags)
 {
+    TRACE("SdlWindow::CreateWindowBuffer");
+    if (!m_memory) {
+        auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
+        m_memory = Asgaard::MemoryPool::Create(this, screenSize);
+    }
+
     m_buffer = Asgaard::MemoryBuffer::Create(this, m_memory, 0, Dimensions().Width(),
-        Dimensions().Height(), format);
+        Dimensions().Height(), format, flags);
     SetBuffer(m_buffer);
 }
 
 void SdlWindow::DeleteWindowBuffer()
 {
+    TRACE("SdlWindow::DeleteWindowBuffer");
     if (m_buffer) {
         m_buffer->Unsubscribe(this);
         m_buffer->Destroy();
