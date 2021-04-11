@@ -36,6 +36,7 @@ extern int           VALI_OSGL_SetSwapInterval(_THIS, int interval);
 extern int           VALI_OSGL_GetSwapInterval(_THIS);
 extern int           VALI_OSGL_SwapWindow(_THIS, SDL_Window * window);
 extern void          VALI_OSGL_DeleteContext(_THIS, SDL_GLContext context);
+extern void          VALI_OSGL_DefaultProfileConfig(_THIS, int *mask, int *major, int *minor);
 
 #endif /* SDL_valiosmesa_h_ */
 

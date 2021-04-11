@@ -94,12 +94,6 @@ int VALI_OSGL_LoadLibrary(_THIS, const char *path)
 void* VALI_OSGL_GetProcAddress(_THIS, const char *proc)
 {
     void *func;
-    SDL_SetError("VALI_OSGL_CreateContext(proc=%s)", proc);
-
-    if (!_this->gl_config.dll_handle || !_this->gl_data || !_this->gl_data->GetProcAddress) {
-        SDL_SetError("OpenGL function[GetProcAddress]/data was not loaded properly");
-        return NULL;
-    }
 
     func = (void*)_this->gl_data->GetProcAddress(proc);
     if (!func) {
@@ -111,11 +105,6 @@ void* VALI_OSGL_GetProcAddress(_THIS, const char *proc)
 
 void VALI_OSGL_UnloadLibrary(_THIS)
 {
-    if (!_this->gl_config.dll_handle || !_this->gl_data) {
-        SDL_SetError("OpenGL context was not loaded, cannot unload");
-        return;
-    }
-
     SDL_UnloadObject(_this->gl_config.dll_handle);
     _this->gl_config.dll_handle = NULL;
     SDL_free(_this->gl_data);
@@ -129,6 +118,13 @@ struct ValiOsMesaContext {
     int           height;
 };
 
+void VALI_OSGL_DefaultProfileConfig(_THIS, int *mask, int *major, int *minor)
+{
+    *mask = SDL_GL_CONTEXT_PROFILE_CORE;
+    *major = 4;
+    *minor = 5;
+}
+
 SDL_GLContext VALI_OSGL_CreateContext(_THIS, SDL_Window * window)
 {
     struct ValiOsMesaContext* context;
@@ -136,27 +132,31 @@ SDL_GLContext VALI_OSGL_CreateContext(_THIS, SDL_Window * window)
     int pitch;
     int result;
     Uint32 format;
-    SDL_SetError("VALI_OSGL_CreateContext()");
-
-    if (!_this->gl_config.dll_handle || !_this->gl_data || !_this->gl_data->CreateContextAttribs) {
-        SDL_SetError("OpenGL function[CreateContextAttribs]/data was not loaded properly");
-        return NULL;
-    }
 
     attributes[n++] = OSMESA_FORMAT;
     attributes[n++] = OSMESA_RGBA; // derive from window framebuffer format
     attributes[n++] = OSMESA_DEPTH_BITS;
-    attributes[n++] = 24;
+    attributes[n++] = _this->gl_config.depth_size;
     attributes[n++] = OSMESA_STENCIL_BITS;
-    attributes[n++] = 8;
+    attributes[n++] = _this->gl_config.stencil_size;
     attributes[n++] = OSMESA_ACCUM_BITS;
-    attributes[n++] = 0;
-    attributes[n++] = OSMESA_PROFILE;
-    attributes[n++] = OSMESA_COMPAT_PROFILE;
+    attributes[n++] = _this->gl_config.accum_red_size +
+                      _this->gl_config.accum_green_size +
+                      _this->gl_config.accum_blue_size +
+                      _this->gl_config.accum_alpha_size;
+    if (_this->gl_config.profile_mask) {
+        attributes[n++] = OSMESA_PROFILE;
+        if (_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_CORE) {
+            attributes[n++] = OSMESA_CORE_PROFILE;
+        }
+        else {
+            attributes[n++] = OSMESA_COMPAT_PROFILE;
+        }
+    }
     attributes[n++] = OSMESA_CONTEXT_MAJOR_VERSION;
-    attributes[n++] = 2;
+    attributes[n++] = _this->gl_config.major_version;
     attributes[n++] = OSMESA_CONTEXT_MINOR_VERSION;
-    attributes[n++] = 1;
+    attributes[n++] = _this->gl_config.minor_version;
     attributes[n++] = 0;
 
     context = (struct ValiOsMesaContext*) SDL_calloc(1, sizeof(struct ValiOsMesaContext));
@@ -164,14 +164,12 @@ SDL_GLContext VALI_OSGL_CreateContext(_THIS, SDL_Window * window)
         return NULL;
     }
 
-    SDL_SetError("VALI_OSGL_CreateContext 1");
     result = _this->CreateWindowFramebuffer(_this, window, &format, &context->framebuffer, &pitch);
     if (result) {
         SDL_free(context);
         return NULL;
     }
 
-    SDL_SetError("VALI_OSGL_CreateContext 2");
     context->context = _this->gl_data->CreateContextAttribs(&attributes[0], NULL);
     if (!context->context) {
         _this->DestroyWindowFramebuffer(_this, window);
@@ -180,14 +178,12 @@ SDL_GLContext VALI_OSGL_CreateContext(_THIS, SDL_Window * window)
     }
 
     SDL_GetWindowSize(window, &context->width, &context->height);
-    SDL_SetError("VALI_OSGL_CreateContext 3");
 
     if (VALI_OSGL_MakeCurrent(_this, window, context)) {
         _this->DestroyWindowFramebuffer(_this, window);
         SDL_free(context);
         return NULL;
     }
-    SDL_SetError("VALI_OSGL_CreateContext 4");
     return context;
 }
 
@@ -195,11 +191,6 @@ int VALI_OSGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
     struct ValiOsMesaContext* _context;
     int                       status;
-    SDL_SetError("VALI_OSGL_MakeCurrent()");
-
-    if (!_this->gl_config.dll_handle || !_this->gl_data || !_this->gl_data->MakeCurrent) {
-        return SDL_SetError("OpenGL function[MakeCurrent]/data was not loaded properly");
-    }
 
     _context = (struct ValiOsMesaContext*)context;
     status = _this->gl_data->MakeCurrent(
@@ -213,28 +204,16 @@ int VALI_OSGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 
 int VALI_OSGL_SetSwapInterval(_THIS, int interval)
 {
-    if (!_this->gl_config.dll_handle || !_this->gl_data) {
-        return SDL_SetError("OpenGL function[SetSwapInterval]/data was not loaded properly");
-    }
-
     return SDL_Unsupported();
 }
 
 int VALI_OSGL_GetSwapInterval(_THIS)
 {
-    if (!_this->gl_config.dll_handle || !_this->gl_data) {
-        return SDL_SetError("OpenGL function[GetSwapInterval]/data was not loaded properly");
-    }
     return 0;
 }
 
 int VALI_OSGL_SwapWindow(_THIS, SDL_Window * window)
 {
-    SDL_SetError("VALI_OSGL_SwapWindow()");
-    if (!_this->gl_config.dll_handle || !_this->gl_data) {
-        return SDL_SetError("OpenGL function[SwapWindow]/data was not loaded properly");
-    }
-
     _this->gl_data->glFinish();
     return SDL_VALI_UpdateWindowFramebuffer(_this, window, NULL, 0);
 }
@@ -242,11 +221,6 @@ int VALI_OSGL_SwapWindow(_THIS, SDL_Window * window)
 void VALI_OSGL_DeleteContext(_THIS, SDL_GLContext context)
 {
     struct ValiOsMesaContext* _context;
-    SDL_SetError("VALI_OSGL_DeleteContext()");
-    if (!_this->gl_config.dll_handle || !_this->gl_data) {
-        SDL_SetError("OpenGL function[DeleteContext]/data was not loaded properly");
-        return;
-    }
 
     _context = (struct ValiOsMesaContext*)context;
     _this->gl_data->DestroyContext(_context->context);

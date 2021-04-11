@@ -188,7 +188,6 @@ static SDL_Scancode g_sdlScanCodesMap[VK_KEYCOUNT] = {
 
 void SdlWindow::OnCreated()
 {
-    TRACE("SdlWindow::OnCreated");
     if (!m_memory) {
         auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
         m_memory = Asgaard::MemoryPool::Create(this, screenSize);
@@ -196,12 +195,12 @@ void SdlWindow::OnCreated()
 
     // Now all resources are created
     SetDropShadow(Asgaard::Rectangle(-10, -10, 20, 30));
+    MarkInputRegion(Dimensions());
     OnRefreshed(nullptr);
 }
 
 void SdlWindow::OnRefreshed(Asgaard::MemoryBuffer* buffer)
 {
-    TRACE("SdlWindow::OnRefreshed");
     // Request redraw
     if (m_redraw) {
         Redraw();
@@ -225,6 +224,7 @@ void SdlWindow::OnMaximize()
 
 void SdlWindow::OnKeyEvent(const Asgaard::KeyEvent& keyEvent)
 {
+    TRACE("SdlWindow::OnKeyEvent");
     // Convert to SDL scancode
     SDL_SendKeyboardKey(
         keyEvent.Pressed() ? SDL_PRESSED : SDL_RELEASED, 
@@ -245,12 +245,14 @@ void SdlWindow::OnFocus(bool focus)
 
 void SdlWindow::OnMouseEnter(const std::shared_ptr<Asgaard::Pointer>& pointer, int localX, int localY)
 {
+    TRACE("SdlWindow::OnMouseEnter(x=%i, y=%i)", localX, localY);
     m_currentPointer = pointer;
     SDL_SetMouseFocus(static_cast<SDL_Window*>(m_sdlContext));
 }
 
 void SdlWindow::OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>& pointer)
 {
+    TRACE("SdlWindow::OnMouseLeave");
     if (m_currentPointer->Id() == pointer->Id()) {
         m_currentPointer.reset();
     }
@@ -259,6 +261,7 @@ void SdlWindow::OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>& pointer)
 
 void SdlWindow::OnMouseMove(const std::shared_ptr<Asgaard::Pointer>& pointer, int localX, int localY)
 {
+    TRACE("SdlWindow::OnMouseMove(x=%i, y=%i)", localX, localY);
     SDL_Mouse* mouse = SDL_GetMouse();
     SDL_SendMouseMotion(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, 0, localX, localY);
 }
@@ -267,6 +270,7 @@ void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, enum Asga
 {
     SDL_Mouse* mouse = SDL_GetMouse();
     int sdlIndex = static_cast<int>(button) + 1;
+    TRACE("SdlWindow::OnMouseClick(btn=%i)", sdlIndex);
 
     if (pressed) {
         SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, sdlIndex);
@@ -278,7 +282,6 @@ void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, enum Asga
 
 void SdlWindow::RequestRedraw()
 {
-    TRACE("SdlWindow::RequestRedraw");
     bool shouldRedraw = m_redrawReady.exchange(false);
     if (shouldRedraw) {
         Redraw();
@@ -290,14 +293,12 @@ void SdlWindow::RequestRedraw()
 
 void SdlWindow::Redraw()
 {
-    TRACE("SdlWindow::Redraw");
     MarkDamaged(Dimensions());
     ApplyChanges();
 }
 
 void SdlWindow::CreateWindowBuffer(enum Asgaard::PixelFormat format, enum Asgaard::MemoryBuffer::Flags flags)
 {
-    TRACE("SdlWindow::CreateWindowBuffer");
     if (!m_memory) {
         auto screenSize = m_screen->GetCurrentWidth() * m_screen->GetCurrentHeight() * 4;
         m_memory = Asgaard::MemoryPool::Create(this, screenSize);
@@ -310,7 +311,6 @@ void SdlWindow::CreateWindowBuffer(enum Asgaard::PixelFormat format, enum Asgaar
 
 void SdlWindow::DeleteWindowBuffer()
 {
-    TRACE("SdlWindow::DeleteWindowBuffer");
     if (m_buffer) {
         m_buffer->Unsubscribe(this);
         m_buffer->Destroy();
@@ -352,7 +352,7 @@ void SdlWindow::SetWindowGrab(bool set)
 
 int SDL_VALI_CreateWindow(_THIS, SDL_Window * window)
 {
-    int w, h;
+    int w, h, update = 0;
 
     SDL_GetWindowSize(window, &w, &h);
 
@@ -361,12 +361,19 @@ int SDL_VALI_CreateWindow(_THIS, SDL_Window * window)
         return -1;
     }
 
+    if (w > screen->GetCurrentWidth())  { w = screen->GetCurrentWidth();  update = 1; }
+    if (h > screen->GetCurrentHeight()) { h = screen->GetCurrentHeight(); update = 1; }
+
     auto sdlWindow = screen->CreateWindow<SdlWindow>(Asgaard::Rectangle(0, 0, w, h), static_cast<void*>(window));
     if (sdlWindow == nullptr) {
         return -1;
     }
     
     SDL_SetWindowData(window, VALI_WINDOW_DATA, sdlWindow.get());
+
+    if (update) {
+        SDL_SetWindowSize(window, w, h);
+    }
     return 0;
 }
 

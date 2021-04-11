@@ -95,15 +95,16 @@ VALI_CreateDevice(int devindex)
 
     // graphics
 #if SDL_VIDEO_OPENGL_OSMESA
-    device->GL_LoadLibrary     = VALI_OSGL_LoadLibrary;
-    device->GL_GetProcAddress  = VALI_OSGL_GetProcAddress;
-    device->GL_UnloadLibrary   = VALI_OSGL_UnloadLibrary;
-    device->GL_CreateContext   = VALI_OSGL_CreateContext;
-    device->GL_MakeCurrent     = VALI_OSGL_MakeCurrent;
-    device->GL_SetSwapInterval = VALI_OSGL_SetSwapInterval;
-    device->GL_GetSwapInterval = VALI_OSGL_GetSwapInterval;
-    device->GL_SwapWindow      = VALI_OSGL_SwapWindow;
-    device->GL_DeleteContext   = VALI_OSGL_DeleteContext;
+    device->GL_LoadLibrary          = VALI_OSGL_LoadLibrary;
+    device->GL_GetProcAddress       = VALI_OSGL_GetProcAddress;
+    device->GL_UnloadLibrary        = VALI_OSGL_UnloadLibrary;
+    device->GL_CreateContext        = VALI_OSGL_CreateContext;
+    device->GL_MakeCurrent          = VALI_OSGL_MakeCurrent;
+    device->GL_SetSwapInterval      = VALI_OSGL_SetSwapInterval;
+    device->GL_GetSwapInterval      = VALI_OSGL_GetSwapInterval;
+    device->GL_SwapWindow           = VALI_OSGL_SwapWindow;
+    device->GL_DeleteContext        = VALI_OSGL_DeleteContext;
+    device->GL_DefaultProfileConfig = VALI_OSGL_DefaultProfileConfig;
 #endif
 
     return device;

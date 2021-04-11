@@ -103,6 +103,7 @@ typedef struct
     /* Multitexture support */
     SDL_bool GL_ARB_multitexture_supported;
     PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;
+    PFNGLACTIVETEXTUREPROC glActiveTexture;
     GLint num_texture_units;
 
     PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT;
@@ -1179,21 +1180,27 @@ SetCopyState(GL_RenderData *data, const SDL_RenderCommand *cmd)
 
     if (texture != data->drawstate.texture) {
         const GLenum textype = data->textype;
+        if (data->GL_ARB_multitexture_supported) {
 #if SDL_HAVE_YUV
-        if (texturedata->yuv) {
-            data->glActiveTextureARB(GL_TEXTURE2_ARB);
-            data->glBindTexture(textype, texturedata->vtexture);
+            if (texturedata->yuv) {
+                data->glActiveTextureARB(GL_TEXTURE2_ARB);
+                data->glBindTexture(textype, texturedata->vtexture);
 
-            data->glActiveTextureARB(GL_TEXTURE1_ARB);
-            data->glBindTexture(textype, texturedata->utexture);
-        }
-        if (texturedata->nv12) {
-            data->glActiveTextureARB(GL_TEXTURE1_ARB);
-            data->glBindTexture(textype, texturedata->utexture);
-        }
+                data->glActiveTextureARB(GL_TEXTURE1_ARB);
+                data->glBindTexture(textype, texturedata->utexture);
+            }
+            if (texturedata->nv12) {
+                data->glActiveTextureARB(GL_TEXTURE1_ARB);
+                data->glBindTexture(textype, texturedata->utexture);
+            }
 #endif
-        data->glActiveTextureARB(GL_TEXTURE0_ARB);
-        data->glBindTexture(textype, texturedata->texture);
+            data->glActiveTextureARB(GL_TEXTURE0_ARB);
+            data->glBindTexture(textype, texturedata->texture);
+        }
+        else if (data->glActiveTexture) {
+            data->glActiveTexture(GL_TEXTURE0);
+            data->glBindTexture(textype, texturedata->texture);
+        }
 
         data->drawstate.texture = texture;
     }
@@ -1543,14 +1550,16 @@ GL_BindTexture (SDL_Renderer * renderer, SDL_Texture *texture, float *texw, floa
 
     data->glEnable(textype);
 #if SDL_HAVE_YUV
-    if (texturedata->yuv) {
-        data->glActiveTextureARB(GL_TEXTURE2_ARB);
-        data->glBindTexture(textype, texturedata->vtexture);
+    if (data->GL_ARB_multitexture_supported) {
+        if (texturedata->yuv) {
+            data->glActiveTextureARB(GL_TEXTURE2_ARB);
+            data->glBindTexture(textype, texturedata->vtexture);
 
-        data->glActiveTextureARB(GL_TEXTURE1_ARB);
-        data->glBindTexture(textype, texturedata->utexture);
+            data->glActiveTextureARB(GL_TEXTURE1_ARB);
+            data->glBindTexture(textype, texturedata->utexture);
 
-        data->glActiveTextureARB(GL_TEXTURE0_ARB);
+            data->glActiveTextureARB(GL_TEXTURE0_ARB);
+        }
     }
 #endif
     data->glBindTexture(textype, texturedata->texture);
@@ -1574,14 +1583,16 @@ GL_UnbindTexture (SDL_Renderer * renderer, SDL_Texture *texture)
     GL_ActivateRenderer(renderer);
 
 #if SDL_HAVE_YUV
-    if (texturedata->yuv) {
-        data->glActiveTextureARB(GL_TEXTURE2_ARB);
-        data->glDisable(textype);
+    if (data->GL_ARB_multitexture_supported) {
+        if (texturedata->yuv) {
+            data->glActiveTextureARB(GL_TEXTURE2_ARB);
+            data->glDisable(textype);
 
-        data->glActiveTextureARB(GL_TEXTURE1_ARB);
-        data->glDisable(textype);
+            data->glActiveTextureARB(GL_TEXTURE1_ARB);
+            data->glDisable(textype);
 
-        data->glActiveTextureARB(GL_TEXTURE0_ARB);
+            data->glActiveTextureARB(GL_TEXTURE0_ARB);
+        }
     }
 #endif
 
@@ -1743,6 +1754,12 @@ GL_CreateRenderer(SDL_Window * window, Uint32 flags)
         if (data->glActiveTextureARB) {
             data->GL_ARB_multitexture_supported = SDL_TRUE;
             data->glGetIntegerv(GL_MAX_TEXTURE_UNITS_ARB, &data->num_texture_units);
+        }
+    }
+    else {
+        data->glActiveTexture = (PFNGLACTIVETEXTUREPROC) SDL_GL_GetProcAddress("glActiveTexture");
+        if (data->glActiveTexture) {
+            data->glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &data->num_texture_units);
         }
     }
 
