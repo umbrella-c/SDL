@@ -233,11 +233,13 @@ void SdlWindow::OnKeyEvent(const Asgaard::KeyEvent& keyEvent)
 
 void SdlWindow::OnResized(enum SurfaceEdges, int width, int height)
 {
+    TRACE("SdlWindow::OnResized(w=%i, h=%i)", width, height);
     SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), SDL_WINDOWEVENT_RESIZED, width, height);
 }
 
 void SdlWindow::OnFocus(bool focus)
 {
+    TRACE("SdlWindow::OnFocus(f=%i)", static_cast<int>(focus));
     SDL_SendWindowEvent(static_cast<SDL_Window*>(m_sdlContext), 
         (focus ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST), 
         0, 0);
@@ -245,14 +247,12 @@ void SdlWindow::OnFocus(bool focus)
 
 void SdlWindow::OnMouseEnter(const std::shared_ptr<Asgaard::Pointer>& pointer, int localX, int localY)
 {
-    TRACE("SdlWindow::OnMouseEnter(x=%i, y=%i)", localX, localY);
     m_currentPointer = pointer;
     SDL_SetMouseFocus(static_cast<SDL_Window*>(m_sdlContext));
 }
 
 void SdlWindow::OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>& pointer)
 {
-    TRACE("SdlWindow::OnMouseLeave");
     if (m_currentPointer->Id() == pointer->Id()) {
         m_currentPointer.reset();
     }
@@ -261,7 +261,6 @@ void SdlWindow::OnMouseLeave(const std::shared_ptr<Asgaard::Pointer>& pointer)
 
 void SdlWindow::OnMouseMove(const std::shared_ptr<Asgaard::Pointer>& pointer, int localX, int localY)
 {
-    TRACE("SdlWindow::OnMouseMove(x=%i, y=%i)", localX, localY);
     SDL_Mouse* mouse = SDL_GetMouse();
     SDL_SendMouseMotion(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, 0, localX, localY);
 }
@@ -270,7 +269,6 @@ void SdlWindow::OnMouseClick(const std::shared_ptr<Asgaard::Pointer>&, enum Asga
 {
     SDL_Mouse* mouse = SDL_GetMouse();
     int sdlIndex = static_cast<int>(button) + 1;
-    TRACE("SdlWindow::OnMouseClick(btn=%i)", sdlIndex);
 
     if (pressed) {
         SDL_SendMouseButton(static_cast<SDL_Window*>(m_sdlContext), mouse->mouseID, SDL_PRESSED, sdlIndex);
@@ -320,8 +318,10 @@ void SdlWindow::DeleteWindowBuffer()
 
 void SdlWindow::ShowWindow()
 {
-    SetBuffer(m_buffer);
-    ApplyChanges();
+    if (m_buffer) {
+        SetBuffer(m_buffer);
+        ApplyChanges();
+    }
 }
 
 void SdlWindow::HideWindow()
@@ -385,6 +385,7 @@ void SDL_VALI_DestroyWindow(_THIS, SDL_Window * window)
     }
     
     sdlWindow->Destroy();
+    SDL_SetWindowData(window, VALI_WINDOW_DATA, nullptr);
 }
 
 void SDL_VALI_SetWindowTitle(_THIS, SDL_Window * window)
