@@ -38,7 +38,7 @@ int SDL_VALI_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format
         sdlWindow->DeleteWindowBuffer();
     }
 
-    sdlWindow->CreateWindowBuffer(Asgaard::PixelFormat::X8B8G8R8, Asgaard::MemoryBuffer::Flags::FLIP_Y);
+    sdlWindow->CreateWindowBuffer(Asgaard::PixelFormat::X8B8G8R8, Asgaard::MemoryBuffer::Flags::NONE);
 
     *format = SDL_PIXELFORMAT_ABGR8888;
     *pixels = sdlWindow->GetBuffer()->Buffer();

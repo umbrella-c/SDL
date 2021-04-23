@@ -37,6 +37,7 @@ struct SDL_GLDriverData
    OSMesaContext GLAPIENTRY (*CreateContextAttribs) ( const int *attribList, OSMesaContext sharelist );
    void GLAPIENTRY          (*DestroyContext)       ( OSMesaContext ctx );
    GLboolean GLAPIENTRY     (*MakeCurrent)          ( OSMesaContext ctx, void *buffer, GLenum type, GLsizei width, GLsizei height );
+   void GLAPIENTRY          (*PixelStore)           ( GLint pname, GLint value );
    OSMesaContext GLAPIENTRY (*GetCurrentContext)    ( void );
    OSMESAproc GLAPIENTRY    (*GetProcAddress)       ( const char *funcName );
    void GLAPIENTRY          (*glFinish)             ( void );
@@ -74,6 +75,7 @@ int VALI_OSGL_LoadLibrary(_THIS, const char *path)
    _this->gl_data->CreateContextAttribs = (OSMesaContext GLAPIENTRY(*)(const int *, OSMesaContext))SDL_LoadFunction(_this->gl_config.dll_handle, "OSMesaCreateContextAttribs");
    _this->gl_data->DestroyContext = (void GLAPIENTRY(*)(OSMesaContext))SDL_LoadFunction(_this->gl_config.dll_handle, "OSMesaDestroyContext");
    _this->gl_data->MakeCurrent = (GLboolean GLAPIENTRY(*)(OSMesaContext, void *, GLenum, GLsizei, GLsizei))SDL_LoadFunction(_this->gl_config.dll_handle, "OSMesaMakeCurrent");
+   _this->gl_data->PixelStore = (void GLAPIENTRY(*)(GLint, GLint))SDL_LoadFunction(_this->gl_config.dll_handle, "OSMesaPixelStore");
    _this->gl_data->GetCurrentContext = (OSMesaContext GLAPIENTRY(*)(void))SDL_LoadFunction(_this->gl_config.dll_handle, "OSMesaGetCurrentContext");
    _this->gl_data->GetProcAddress = (OSMESAproc GLAPIENTRY(*)(const char*))SDL_LoadFunction(_this->gl_config.dll_handle, "OSMesaGetProcAddress");
 
@@ -196,6 +198,10 @@ int VALI_OSGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
     status = _this->gl_data->MakeCurrent(
         _context->context, _context->framebuffer, GL_UNSIGNED_BYTE,
         _context->width, _context->height);
+
+    // Update the pixel store for osmesa
+    _this->gl_data->PixelStore(OSMESA_Y_UP, 0);
+    
     if (status == GL_FALSE) {
         return SDL_SetError("MakeCurrent failed to set current context as active");
     }

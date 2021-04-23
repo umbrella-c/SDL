@@ -194,6 +194,7 @@ void SdlWindow::OnCreated()
     }
 
     // Now all resources are created
+    EnableDecoration(true);
     SetDropShadow(Asgaard::Rectangle(-10, -10, 20, 30));
     MarkInputRegion(Dimensions());
     OnRefreshed(nullptr);
