@@ -133,7 +133,7 @@ endif()
 # The hidraw support doesn't catch Xbox, PS4 and Nintendo controllers,
 #  so we'll just use libusb when it's available. libusb does not support iOS,
 #  so we default to yes on iOS.
-if(IOS OR TVOS OR VISIONOS OR ANDROID)
+if(IOS OR TVOS OR VISIONOS OR ANDROID OR VALI)
   set(SDL_HIDAPI_LIBUSB_AVAILABLE FALSE)
 else()
   set(SDL_HIDAPI_LIBUSB_AVAILABLE TRUE)
@@ -152,7 +152,7 @@ endif()
 # Default option knobs
 set(SDL_LIBC_DEFAULT ON)
 set(SDL_SYSTEM_ICONV_DEFAULT ON)
-if(WINDOWS OR IOS OR TVOS OR VISIONOS)
+if(WINDOWS OR IOS OR TVOS OR VISIONOS OR VALI)
   set(SDL_SYSTEM_ICONV_DEFAULT OFF)
 endif()
 
@@ -321,6 +321,7 @@ dep_option(SDL_SNDIO_SHARED        "Dynamically load the sndio audio API" ON "SD
 set_option(SDL_RPATH               "Use an rpath when linking SDL" ${SDL_RPATH_DEFAULT})
 set_option(SDL_CLOCK_GETTIME       "Use clock_gettime() instead of gettimeofday()" ${SDL_CLOCK_GETTIME_DEFAULT})
 dep_option(SDL_X11                 "Use X11 video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
+set_option(SDL_VIOARR              "Use Vioarr video driver" ${VIOARR_VIDEO_SUPPORTED})
 dep_option(SDL_X11_SHARED          "Dynamically load X11 support" ON "SDL_X11" OFF)
 set(SDL_X11_OPTIONS Xcursor Xdbe XInput Xfixes Xrandr Xscrnsaver XShape)
 foreach(_SUB ${SDL_X11_OPTIONS})
@@ -1248,6 +1249,22 @@ if(SDL_VIDEO)
     sdl_glob_sources("${SDL3_SOURCE_DIR}/src/video/dummy/*.c")
     set(HAVE_DUMMYVIDEO TRUE)
     set(HAVE_SDL_VIDEO TRUE)
+  endif()
+endif()
+
+if(SDL_VIOARR)
+  if(NOT SDL_LOADSO)
+    message_error("SDL_VIDEO requires SDL_LOADSO, which is not enabled")
+  endif()
+  set(SDL_VIDEO_DRIVER_VIOARR 1)
+  sdl_glob_sources("${SDL2_SOURCE_DIR}/src/video/vioarr/*.cpp")
+  set(HAVE_SDL_VIDEO TRUE)
+
+  if(VIDEO_OPENGL)
+    set(SDL_VIDEO_OPENGL 1)
+    set(SDL_VIDEO_OPENGL_OSMESA 1)
+    set(SDL_VIDEO_RENDER_OGL 1)
+    set(HAVE_VIDEO_OPENGL TRUE)
   endif()
 endif()
 
@@ -2531,6 +2548,40 @@ elseif(RISCOS)
     CheckOSS()
   endif()
 
+elseif(VALI)
+  add_definitions(-D__STDC_FORMAT_MACROS_64)
+
+  if(SDL_FILESYSTEM)
+    set(SDL_FILESYSTEM_VALI 1)
+    file(GLOB FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/vali/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${FILESYSTEM_SOURCES})
+    set(HAVE_SDL_FILESYSTEM TRUE)
+  endif()
+  
+  if(SDL_LOADSO)
+    set(SDL_LOADSO_DLOPEN 1)
+    file(GLOB LOADSO_SOURCES ${SDL2_SOURCE_DIR}/src/loadso/dlopen/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${LOADSO_SOURCES})
+    set(HAVE_SDL_LOADSO TRUE)
+  endif()
+
+  if(SDL_THREADS)
+    set(SDL_THREAD_VALI 1)
+    file(GLOB THREADS_SOURCES ${SDL2_SOURCE_DIR}/src/thread/vali/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${THREADS_SOURCES})
+    set(HAVE_SDL_THREADS TRUE)
+  endif()
+
+  if(SDL_TIMERS)
+    set(SDL_TIMER_VALI 1)
+    file(GLOB TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/vali/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${TIMER_SOURCES})
+    set(HAVE_SDL_TIMERS TRUE)
+  endif()
+
+  list(APPEND EXTRA_LIBS ValiDDK::libddk)
+endif()
+
 elseif(VITA)
   # SDL_spinlock.c Needs to be compiled in ARM mode.
   cmake_push_check_state()
@@ -2992,6 +3043,10 @@ file(GENERATE
   INPUT "${SDL3_BINARY_DIR}/SDL_build_config.h.intermediate"
 )
 
+if(VALI AND SDL_SHARED)
+  sdl_sources(${SDL2_SOURCE_DIR}/src/SDL_dllmain.c)
+endif()
+
 file(GLOB SDL3_INCLUDE_FILES "${SDL3_SOURCE_DIR}/include/SDL3/*.h")
 file(GLOB SDL3_TEST_INCLUDE_FILES "${SDL3_SOURCE_DIR}/include/SDL3/SDL_test*.h")
 foreach(_hdr IN LISTS SDL3_INCLUDE_FILES)
@@ -3288,7 +3343,7 @@ if(SDL_SHARED)
       SOVERSION "${SDL_SO_VERSION_MAJOR}"
     )
   else()
-    if(WINDOWS OR CYGWIN)
+    if(WINDOWS OR CYGWIN OR VALI)
       set_target_properties(SDL3-shared PROPERTIES
         PREFIX ""
       )

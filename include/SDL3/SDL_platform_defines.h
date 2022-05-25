@@ -34,6 +34,9 @@
 #ifdef __HAIKU__
 #define SDL_PLATFORM_HAIKU   1
 #endif
+#ifdef __VALI__
+#define SDL_PLATFORM_VALI   1
+#endif
 #if defined(bsdi) || defined(__bsdi) || defined(__bsdi__)
 #define SDL_PLATFORM_BSDI    1
 #endif
@@ -45,6 +48,10 @@
 #endif
 #if defined(sgi) || defined(__sgi) || defined(__sgi__) || defined(_SGI_SOURCE)
 #define SDL_PLATFORM_IRIX    1
+#endif
+#if (defined(MOLLENOS) || defined(VALI))
+#undef __VALI__
+#define __VALI__    1
 #endif
 #if (defined(linux) || defined(__linux) || defined(__linux__))
 #define SDL_PLATFORM_LINUX   1

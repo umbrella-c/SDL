@@ -1,0 +1,8 @@
+{
+    "cmake.configureArgs": [
+        "-DSDL_ENABLE_VIORR=ON"
+    ],
+    "files.associations": {
+        "random": "cpp"
+    }
+}

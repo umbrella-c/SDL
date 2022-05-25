@@ -81,6 +81,9 @@ static VideoBootStrap *bootstrap[] = {
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
     &WINDOWS_bootstrap,
 #endif
+#if SDL_VIDEO_DRIVER_VIOARR
+    &VALI_bootstrap,
+#endif
 #ifdef SDL_VIDEO_DRIVER_WINRT
     &WINRT_bootstrap,
 #endif

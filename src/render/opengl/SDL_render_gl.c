@@ -111,6 +111,7 @@ typedef struct
     /* Multitexture support */
     SDL_bool GL_ARB_multitexture_supported;
     PFNGLACTIVETEXTUREARBPROC glActiveTextureARB;
+    PFNGLACTIVETEXTUREPROC glActiveTexture;
     GLint num_texture_units;
 
     PFNGLGENFRAMEBUFFERSEXTPROC glGenFramebuffersEXT;
@@ -1151,6 +1152,7 @@ static int SetCopyState(GL_RenderData *data, const SDL_RenderCommand *cmd)
 
     if (texture != data->drawstate.texture) {
         const GLenum textype = data->textype;
+        if (data->GL_ARB_multitexture_supported) {
 #if SDL_HAVE_YUV
         if (texturedata->yuv) {
             if (data->GL_ARB_multitexture_supported) {
@@ -1828,6 +1830,12 @@ static SDL_Renderer *GL_CreateRenderer(SDL_Window *window, SDL_PropertiesID crea
         if (data->glActiveTextureARB) {
             data->GL_ARB_multitexture_supported = SDL_TRUE;
             data->glGetIntegerv(GL_MAX_TEXTURE_UNITS_ARB, &data->num_texture_units);
+        }
+    }
+    else {
+        data->glActiveTexture = (PFNGLACTIVETEXTUREPROC) SDL_GL_GetProcAddress("glActiveTexture");
+        if (data->glActiveTexture) {
+            data->glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &data->num_texture_units);
         }
     }
 
