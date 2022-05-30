@@ -44,8 +44,8 @@ SDL_TicksQuit(void)
     ticks_started = SDL_FALSE;
 }
 
-Uint32
-SDL_GetTicks(void)
+Uint64
+SDL_GetTicks64(void)
 {
 	struct timespec now;
     if (!ticks_started) {
@@ -53,15 +53,15 @@ SDL_GetTicks(void)
     }
 
 	timespec_get(&now, TIME_PROCESS);
-	return (uint32_t)((now.tv_sec * 1000) + (now.tv_nsec / NSEC_PER_MSEC));
+	return (now.tv_sec * 1000) + (now.tv_nsec / NSEC_PER_MSEC);
 }
 
 Uint64
 SDL_GetPerformanceCounter(void)
 {
-    LargeInteger_t value;
-    if (QueryPerformanceTimer(&value) != OsSuccess) {
-        return SDL_GetTicks();
+    LargeUInteger_t value;
+    if (VaGetClockTick(VaClockSourceType_HPC, &value) != OsSuccess) {
+        return SDL_GetTicks64();
     }
     return value.QuadPart;
 }
@@ -69,9 +69,9 @@ SDL_GetPerformanceCounter(void)
 Uint64
 SDL_GetPerformanceFrequency(void)
 {
-    LargeInteger_t frequency;
-    if (QueryPerformanceFrequency(&frequency) != OsSuccess) {
-        return 1000;
+    LargeUInteger_t frequency;
+    if (VaGetClockFrequency(VaClockSourceType_HPC, &frequency) != OsSuccess) {
+        return CLOCKS_PER_SEC;
     }
     return frequency.QuadPart;
 }

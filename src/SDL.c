@@ -23,7 +23,7 @@
 
 #if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
 #include "core/windows/SDL_windows.h"
-#elif !defined(SDL_PLATFORM_WINRT)
+#elif !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_VALI)
 #include <unistd.h> /* _exit(), etc. */
 #endif
 

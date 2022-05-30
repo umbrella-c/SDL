@@ -321,7 +321,7 @@ dep_option(SDL_SNDIO_SHARED        "Dynamically load the sndio audio API" ON "SD
 set_option(SDL_RPATH               "Use an rpath when linking SDL" ${SDL_RPATH_DEFAULT})
 set_option(SDL_CLOCK_GETTIME       "Use clock_gettime() instead of gettimeofday()" ${SDL_CLOCK_GETTIME_DEFAULT})
 dep_option(SDL_X11                 "Use X11 video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
-set_option(SDL_VIOARR              "Use Vioarr video driver" ${VIOARR_VIDEO_SUPPORTED})
+set_option(SDL_VIOARR              "Use Vioarr video driver" ${SDL_VIOARR_SUPPORTED})
 dep_option(SDL_X11_SHARED          "Dynamically load X11 support" ON "SDL_X11" OFF)
 set(SDL_X11_OPTIONS Xcursor Xdbe XInput Xfixes Xrandr Xscrnsaver XShape)
 foreach(_SUB ${SDL_X11_OPTIONS})
@@ -2580,7 +2580,6 @@ elseif(VALI)
   endif()
 
   list(APPEND EXTRA_LIBS ValiDDK::libddk)
-endif()
 
 elseif(VITA)
   # SDL_spinlock.c Needs to be compiled in ARM mode.
